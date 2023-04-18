@@ -28,13 +28,67 @@ namespace HS_Engine
 		{
 			//TODO error Handling
 		}
+		
+		for (auto& shader : shaders)
+		{
+				CompleShader(shader);
+		}
 
-			for (auto& shader : shaders)
+		// TODO : make standard form
+		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_state_desc = {};
+		pipeline_state_desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+		pipeline_state_desc.pRootSignature = rootSignature.Get();
+
+		for(auto& shader : mShaderProgram)
+		{
+			switch (shader.first)
 			{
-
-
-
+			case E_ShaderType::VERTEX_SHADER:
+				pipeline_state_desc.VS = { reinterpret_cast<UINT8*>(shader.second->GetBufferPointer()), shader.second->GetBufferSize() };
+				break;
+			case E_ShaderType::COMPUTE_SHADER:
+			 //compute shader will be separately
+				break;
+			case E_ShaderType::DOMAIN_SHADER:
+				pipeline_state_desc.DS = { reinterpret_cast<UINT8*>(shader.second->GetBufferPointer()), shader.second->GetBufferSize() };
+				break;
+			case E_ShaderType::GEOMETRY_SHADER:
+				pipeline_state_desc.GS = { reinterpret_cast<UINT8*>(shader.second->GetBufferPointer()), shader.second->GetBufferSize() };
+				break;
+			case E_ShaderType::HULL_SHADER:
+				pipeline_state_desc.HS = { reinterpret_cast<UINT8*>(shader.second->GetBufferPointer()), shader.second->GetBufferSize() };
+				break;
+			case E_ShaderType::PIXEL_SHADER:
+				pipeline_state_desc.PS = { reinterpret_cast<UINT8*>(shader.second->GetBufferPointer()), shader.second->GetBufferSize() };
+				break;
+			default:;
 			}
+		}
+
+		pipeline_state_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		pipeline_state_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		pipeline_state_desc.DepthStencilState.DepthEnable = FALSE;
+		pipeline_state_desc.DepthStencilState.StencilEnable = FALSE;
+		pipeline_state_desc.SampleMask = UINT_MAX;
+		pipeline_state_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		//if we want to deferred(multi render target), change this
+		pipeline_state_desc.NumRenderTargets = 1;
+		pipeline_state_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		pipeline_state_desc.SampleDesc.Count = 1;
+
+		hr = device->CreateGraphicsPipelineState(&pipeline_state_desc, IID_PPV_ARGS(&pipelineStateObject));
+		if(FAILED(hr))
+		{
+			//TODO : error handling
+		}
+		
+		
 	}
 
 	void Shader::CompleShader(std::pair<E_ShaderType,std::wstring> path)
@@ -68,18 +122,13 @@ namespace HS_Engine
 		case E_ShaderType::PIXEL_SHADER:
 			hr = D3DCompileFromFile(path.second.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &shader_code, nullptr);
 			break;
-		case E_ShaderType::TESSELLATOR_SHADER:
-			
-			break;
 		default:;
 		}
 		if(FAILED(hr))
 		{
 			//TODO : Error Handling
 		}
-
-
-
+		mShaderProgram.push_back({ path.first, shader_code });
 
 	}
 

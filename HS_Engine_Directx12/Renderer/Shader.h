@@ -14,7 +14,6 @@ enum class E_ShaderType
 	VERTEX_SHADER,
 	PIXEL_SHADER,
 	HULL_SHADER,
-	TESSELLATOR_SHADER,
 	DOMAIN_SHADER,
 	GEOMETRY_SHADER,
 	COMPUTE_SHADER,
@@ -33,7 +32,7 @@ namespace HS_Engine
 	private:
 		ComPtr<ID3D12RootSignature> rootSignature;
 		ComPtr<ID3D12PipelineState> pipelineStateObject;
-		std::vector<ComPtr<ID3DBlob>> mShaderProgram;
+		std::vector<std::pair<E_ShaderType,ComPtr<ID3DBlob>>> mShaderProgram;
 	};
 }
 

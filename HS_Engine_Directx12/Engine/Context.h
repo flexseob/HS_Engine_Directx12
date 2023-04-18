@@ -17,6 +17,7 @@ namespace HS_Engine
 		void UpdatePipeline();
 		void WaitForPreviousFrame();
 		void CleanUp();
+		
 	private:
 		void CreateSwapChain();
 		void CreateRenderTargetDescriptorHeap();
