@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+
+#visual studio
+*.vs/
+*.tlog
+*.user
+*.log
+*.pdb
+*.idb
+*.recipe
+*.exe
+*.ilk
