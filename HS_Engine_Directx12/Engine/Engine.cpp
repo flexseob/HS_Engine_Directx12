@@ -68,6 +68,7 @@ namespace HS_Engine
 		std::cout << "HS(HoSeob) Engine Init" << std::endl;
 		mWindow->Init(WindowProperties(hinstance, nCmdShow));
 		m_hinstance = hinstance;
+
 		
 	}
 

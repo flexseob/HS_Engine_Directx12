@@ -1,6 +1,9 @@
 #include "Context.h"
 #include "d3dx12.h"
+#include "imgui.h"
 
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
 
 HS_Engine::Context::Context()
 {
@@ -63,6 +66,8 @@ void HS_Engine::Context::Init()
 
 
 	D3D12_COMMAND_QUEUE_DESC command_queue_desc = {};
+
+
 	hr = device->CreateCommandQueue(&command_queue_desc, IID_PPV_ARGS(&commandQueue));
 	if(FAILED(hr))
 	{
@@ -75,24 +80,82 @@ void HS_Engine::Context::Init()
 	CreateRenderTargetDescriptorHeap();
 	CreateCommandAllocatorAndList();
 	CreateFenceAndEvent();
+
+
+	auto* window = Engine::Instance().GetWindow();
+	auto& hwnd = window->GetWindowData().m_hwnd;
+
+	//IMGUI_CHECKVERSION();
+
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
+
+
+
+	//ImGui_ImplWin32_WndProcHandler
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplWin32_Init(hwnd);
+	ImGui_ImplDX12_Init(device.Get(), 3,
+		DXGI_FORMAT_R8G8B8A8_UNORM, srvDescriptorHeap.Get(),
+		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+	hr = commandList->Close();
+	ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
+	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	//for(int i =0; i <3; i++)
+	//{
+	//	hr = commandQueue->Signal(fence[i].Get(), fenceValue[i]);
+	//	if (FAILED(hr))
+	//	{
+	//		MessageBox(NULL, L"Error signaling fence",
+	//			L"Error", MB_OK | MB_ICONERROR);
+	//		return;
+	//	}
+	//}
+	fenceValue[frameIndex]++;
+	hr = commandQueue->Signal(fence[frameIndex].Get(), fenceValue[frameIndex]);
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"Error signaling fence",
+					L"Error", MB_OK | MB_ICONERROR);
+	}
+
+	
 }
 
 void HS_Engine::Context::Update()
 {
-	
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("my window");
+	ImGui::End();
+	ImGui::ShowDemoWindow();
+
+
+
 }
 
 void HS_Engine::Context::Render()
 {
 	HRESULT hr;
-
+	WaitForPreviousFrame();
 	UpdatePipeline();
 
-	ID3D12CommandList* pp_command_lists[] = { commandList };
+	ID3D12CommandList* pp_command_lists[] = { commandList.Get() };
 
 	commandQueue->ExecuteCommandLists(_countof(pp_command_lists), pp_command_lists);
 
-	hr = commandQueue->Signal(fence[frameIndex], fenceValue[frameIndex]);
+	hr = commandQueue->Signal(fence[frameIndex].Get(), fenceValue[frameIndex]);
 	if(FAILED(hr))
 	{
 		MessageBox(NULL, L"Error command queue signal",
@@ -106,12 +169,12 @@ void HS_Engine::Context::Render()
 			L"Error", MB_OK | MB_ICONERROR);
 	}
 
+	
 }
 
 void HS_Engine::Context::UpdatePipeline()
 {
 	HRESULT hr;
-	WaitForPreviousFrame();
 
 	hr = commandAllocator[frameIndex]->Reset();
 	if(FAILED(hr))
@@ -120,14 +183,14 @@ void HS_Engine::Context::UpdatePipeline()
 			L"Error", MB_OK | MB_ICONERROR);
 	}
 
-	hr = commandList->Reset(commandAllocator[frameIndex], NULL);
+	hr = commandList->Reset(commandAllocator[frameIndex].Get(), NULL);
 	if (FAILED(hr))
 	{
 		MessageBox(NULL, L"Error  commandList frameIndex Reset",
 			L"Error", MB_OK | MB_ICONERROR);
 	}
 
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	commandList->ResourceBarrier(1, &barrier);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, rtvDescriptorSize);
@@ -137,7 +200,14 @@ void HS_Engine::Context::UpdatePipeline()
 	const float clear_color[] = { 0.f,0.2f,0.4f,1.f };
 	commandList->ClearRenderTargetView(rtvHandle, clear_color, 0, nullptr);
 
-     barrier = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	ID3D12DescriptorHeap* descriptor_heaps[] = { srvDescriptorHeap.Get() };
+	commandList->SetDescriptorHeaps(_countof(descriptor_heaps), descriptor_heaps);
+	ImGui::Render();
+	ImDrawData* drawData = ImGui::GetDrawData();
+	ImGui_ImplDX12_RenderDrawData(drawData, commandList.Get());
+
+
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	commandList->ResourceBarrier(1, &barrier);;
 
 	hr = commandList->Close();
@@ -155,7 +225,6 @@ void HS_Engine::Context::WaitForPreviousFrame()
 	HRESULT hr;
 
 	frameIndex = swapChain->GetCurrentBackBufferIndex();
-
 	if(fence[frameIndex]->GetCompletedValue() < fenceValue[frameIndex])
 	{
 		hr = fence[frameIndex]->SetEventOnCompletion(fenceValue[frameIndex], fenceEvent);
@@ -164,7 +233,7 @@ void HS_Engine::Context::WaitForPreviousFrame()
 			MessageBox(NULL, L"Error SetEventOnCompletion",
 				L"Error", MB_OK | MB_ICONERROR);
 		}
-		//WaitForSingleObject(fenceEvent, INFINITE);
+		WaitForSingleObject(fenceEvent, INFINITE);
 	}
 
 	fenceValue[frameIndex]++;
@@ -180,23 +249,6 @@ void HS_Engine::Context::CleanUp()
 			WaitForPreviousFrame();
 		}
 
-		// get swapchain out of full screen before exiting
-		BOOL fs = false;
-		if (swapChain->GetFullscreenState(&fs, NULL))
-			swapChain->SetFullscreenState(false, NULL);
-
-		SAFE_RELEASE(device);
-		SAFE_RELEASE(swapChain);
-		SAFE_RELEASE(commandQueue);
-		SAFE_RELEASE(rtvDescriptorHeap);
-		SAFE_RELEASE(commandList);
-
-		for (int i = 0; i < frameBufferCount; ++i)
-		{
-			SAFE_RELEASE(renderTargets[i]);
-			SAFE_RELEASE(commandAllocator[i]);
-			SAFE_RELEASE(fence[i]);
-		};
 }
 
 
@@ -231,7 +283,7 @@ void HS_Engine::Context::CreateSwapChain()
 
 	IDXGISwapChain* temp_swap_chain;
 
-	HRESULT hr = dxigiFactory->CreateSwapChain(commandQueue, &swap_chain_desc, &temp_swap_chain);
+	HRESULT hr = dxigiFactory->CreateSwapChain(commandQueue.Get(), &swap_chain_desc, &temp_swap_chain);
 
 	if(FAILED(hr))
 	{
@@ -246,22 +298,47 @@ void HS_Engine::Context::CreateSwapChain()
 void HS_Engine::Context::CreateRenderTargetDescriptorHeap()
 {
 	HRESULT hr;
-	D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
-	rtv_heap_desc.NumDescriptors = frameBufferCount;
-	rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	hr = device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&rtvDescriptorHeap));
 
-	if (FAILED(hr))
+	//render target view heap
 	{
-		MessageBox(NULL, L"Error Create RTV descriptor heap!",
+		D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
+		rtv_heap_desc.NumDescriptors = frameBufferCount;
+		rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		hr = device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&rtvDescriptorHeap));
+
+		if (FAILED(hr))
+		{
+			MessageBox(NULL, L"Error Create RTV descriptor heap!",
 			L"Error", MB_OK | MB_ICONERROR);
-		throw std::runtime_error("Error Create RTV descriptor heap!");
+			throw std::runtime_error("Error Create RTV descriptor heap!");
+		}
+
+		rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
-	rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	//Shader resource view heap
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC srv_heap_desc = {};
+		srv_heap_desc.NumDescriptors = 1000;
+		srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		srv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		hr = device->CreateDescriptorHeap(&srv_heap_desc, IID_PPV_ARGS(&srvDescriptorHeap));
 
+		if (FAILED(hr))
+		{
+			MessageBox(NULL, L"Error Create SRV descriptor heap!",
+				L"Error", MB_OK | MB_ICONERROR);
+			throw std::runtime_error("Error Create SRV descriptor heap!");
+		}
+
+		srvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+	
+
+
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < frameBufferCount; ++i)
 	{
 		hr = swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
@@ -270,9 +347,12 @@ void HS_Engine::Context::CreateRenderTargetDescriptorHeap()
 			MessageBox(NULL, L"Error Create RTV for each buffer!",
 				L"Error", MB_OK | MB_ICONERROR);
 		}
-		device->CreateRenderTargetView(renderTargets[i], nullptr, rtvHandle);
+		device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandle);
 		rtvHandle.Offset(1, rtvDescriptorSize);
 	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
 }
 
 
@@ -290,7 +370,7 @@ void HS_Engine::Context::CreateCommandAllocatorAndList()
 	}
 	//Create CommandList
 
-		hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[0], NULL, IID_PPV_ARGS(&commandList));
+		hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[0].Get(), NULL, IID_PPV_ARGS(&commandList));
 		if (FAILED(hr))
 		{
 			MessageBox(NULL, L"Error Create command list!",
@@ -310,6 +390,7 @@ void HS_Engine::Context::CreateFenceAndEvent()
 			MessageBox(NULL, L"Error Create Fence!",
 				L"Error", MB_OK | MB_ICONERROR);
 		}
+		fenceValue[i] = 0; 
 	}
 
 	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -318,5 +399,6 @@ void HS_Engine::Context::CreateFenceAndEvent()
 		MessageBox(NULL, L"Error Create Fence event!",
 			L"Error", MB_OK | MB_ICONERROR);
 	}
+	//WaitForPreviousFrame();
 }
 

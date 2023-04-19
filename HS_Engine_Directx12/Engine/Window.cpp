@@ -2,6 +2,9 @@
 
 #include <iostream>
 #include "Context.h"
+#include "imgui.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void HS_Engine::Window::Update()
 {
     ShowWindow(m_windowData.m_hwnd, m_windowData.m_nCmdShow);
@@ -18,6 +21,8 @@ void HS_Engine::Window::Shutdown()
 
 LRESULT HS_Engine::Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+
+    ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
     switch (message)
     {
     case WM_KEYDOWN:
@@ -47,7 +52,7 @@ bool HS_Engine::Window::Init(const WindowProperties& window_properties)
     windowClass.style = CS_HREDRAW | CS_VREDRAW;
     windowClass.lpfnWndProc = WindowProc;
     windowClass.hInstance = window_properties.m_hinstance;
-    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    windowClass.hCursor = LoadCursor(window_properties.m_hinstance, IDC_ARROW);
     windowClass.lpszClassName = m_windowData.m_windowName;
 	
    
@@ -72,6 +77,7 @@ bool HS_Engine::Window::Init(const WindowProperties& window_properties)
         NULL);
 
     m_windowData.m_context = std::make_shared<HS_Engine::Context>();
+    ShowWindow(m_windowData.m_hwnd, m_windowData.m_nCmdShow);
 }
 
 
