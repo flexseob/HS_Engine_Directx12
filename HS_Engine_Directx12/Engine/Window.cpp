@@ -77,6 +77,7 @@ bool HS_Engine::Window::Init(const WindowProperties& window_properties)
         NULL);
 
     m_windowData.m_context = std::make_shared<HS_Engine::Context>();
+    m_windowData.m_context->Init();
     ShowWindow(m_windowData.m_hwnd, m_windowData.m_nCmdShow);
 }
 

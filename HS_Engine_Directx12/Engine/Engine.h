@@ -3,7 +3,7 @@
 #include <chrono>
 #include "stdafx.h"
 #include "Window.h"
-
+#include "ImguiManager.h"
 namespace HS_Engine
 {
 	class Engine
@@ -30,13 +30,16 @@ namespace HS_Engine
 
 		static Engine& Instance() { static Engine Instance; return Instance; }
 		HINSTANCE GetInstance() { return m_hinstance; }
-		
+
+		static ImGuiManager& GetImguiManager() { return Instance().mImguiManager; }
+
 		static HS_Engine::Window* GetWindow()
 		{
 			return mWindow.get();
 		}
 	private:
 		static std::unique_ptr<Window> mWindow;
+		ImGuiManager mImguiManager;
 		HINSTANCE m_hinstance;
 	};
 }

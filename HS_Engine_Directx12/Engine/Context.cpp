@@ -7,7 +7,7 @@
 
 HS_Engine::Context::Context()
 {
-	Init();
+	
 }
 
 void HS_Engine::Context::Init()
@@ -81,45 +81,14 @@ void HS_Engine::Context::Init()
 	CreateCommandAllocatorAndList();
 	CreateFenceAndEvent();
 
+	Engine::GetImguiManager().Init();
 
-	auto* window = Engine::Instance().GetWindow();
-	auto& hwnd = window->GetWindowData().m_hwnd;
-
-	//IMGUI_CHECKVERSION();
-
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
-
-
-
-	//ImGui_ImplWin32_WndProcHandler
-	ImGui::StyleColorsDark();
-	//ImGui::StyleColorsLight();
-
-
-	// Setup Platform/Renderer backends
-	ImGui_ImplWin32_Init(hwnd);
-	ImGui_ImplDX12_Init(device.Get(), 3,
-		DXGI_FORMAT_R8G8B8A8_UNORM, srvDescriptorHeap.Get(),
-		srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 	hr = commandList->Close();
 	ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
 	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-	//for(int i =0; i <3; i++)
-	//{
-	//	hr = commandQueue->Signal(fence[i].Get(), fenceValue[i]);
-	//	if (FAILED(hr))
-	//	{
-	//		MessageBox(NULL, L"Error signaling fence",
-	//			L"Error", MB_OK | MB_ICONERROR);
-	//		return;
-	//	}
-	//}
+
+
 	fenceValue[frameIndex]++;
 	hr = commandQueue->Signal(fence[frameIndex].Get(), fenceValue[frameIndex]);
 	if (FAILED(hr))
@@ -133,16 +102,10 @@ void HS_Engine::Context::Init()
 
 void HS_Engine::Context::Update()
 {
-	ImGui_ImplDX12_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
-
-	ImGui::Begin("my window");
-	ImGui::End();
-	ImGui::ShowDemoWindow();
 
 
 
+	Engine::GetImguiManager().Update();
 }
 
 void HS_Engine::Context::Render()
@@ -202,10 +165,9 @@ void HS_Engine::Context::UpdatePipeline()
 
 	ID3D12DescriptorHeap* descriptor_heaps[] = { srvDescriptorHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(descriptor_heaps), descriptor_heaps);
-	ImGui::Render();
-	ImDrawData* drawData = ImGui::GetDrawData();
-	ImGui_ImplDX12_RenderDrawData(drawData, commandList.Get());
 
+	//imgui render
+	Engine::GetImguiManager().Render();
 
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	commandList->ResourceBarrier(1, &barrier);;
@@ -337,7 +299,6 @@ void HS_Engine::Context::CreateRenderTargetDescriptorHeap()
 	
 
 
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	for (int i = 0; i < frameBufferCount; ++i)
 	{
@@ -350,8 +311,6 @@ void HS_Engine::Context::CreateRenderTargetDescriptorHeap()
 		device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandle);
 		rtvHandle.Offset(1, rtvDescriptorSize);
 	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE srvHandle = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
 }
 
@@ -376,8 +335,8 @@ void HS_Engine::Context::CreateCommandAllocatorAndList()
 			MessageBox(NULL, L"Error Create command list!",
 				L"Error", MB_OK | MB_ICONERROR);
 		}
-	
 }
+
 
 void HS_Engine::Context::CreateFenceAndEvent()
 {

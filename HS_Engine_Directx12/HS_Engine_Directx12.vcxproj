@@ -15,6 +15,7 @@
     <ClInclude Include="Engine\Core.h" />
     <ClInclude Include="Engine\d3dx12.h" />
     <ClInclude Include="Engine\Engine.h" />
+    <ClInclude Include="Engine\ImguiManager.h" />
     <ClInclude Include="Engine\stdafx.h" />
     <ClInclude Include="Engine\Window.h" />
     <ClInclude Include="ImGui\backends\imgui_impl_dx12.h" />
@@ -31,6 +32,7 @@
   <ItemGroup>
     <ClCompile Include="Engine\Context.cpp" />
     <ClCompile Include="Engine\Engine.cpp" />
+    <ClCompile Include="Engine\ImguiManager.cpp" />
     <ClCompile Include="Engine\Window.cpp" />
     <ClCompile Include="ImGui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\backends\imgui_impl_win32.cpp" />
