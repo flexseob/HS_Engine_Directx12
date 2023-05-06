@@ -8,7 +8,7 @@
 
 
 using Microsoft::WRL::ComPtr;
-
+using namespace DirectX;
 enum class E_ShaderType
 {
 	VERTEX_SHADER,

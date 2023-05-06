@@ -6,6 +6,7 @@ namespace HS_Engine
 {
 	Shader::Shader(std::initializer_list<std::pair<E_ShaderType, std::wstring>> shaders, bool is_mesh_shader)
 	{
+		
 		auto& context = Engine::Instance().GetWindow()->GetWindowData().m_context;
 		auto* device = context->device.Get();
 		// compileshader
@@ -64,6 +65,7 @@ namespace HS_Engine
 
 	void Shader::DefaultShaderInit()
 	{
+		
 		HRESULT hr;
 		const auto& context = Engine::Instance().GetWindow()->GetWindowData().m_context;
 		auto* device = context->device.Get();

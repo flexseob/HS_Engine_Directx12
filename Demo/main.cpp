@@ -12,7 +12,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 		//RedirectIOToConsole();
 #endif
 		engine.Init(hInstance,nCmdShow);
-		//engine.Instance().GetSceneManager().AddScene(ocean_rendering);
 		engine.Update();
 		engine.Unload();
 	}

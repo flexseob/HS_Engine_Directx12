@@ -7,7 +7,7 @@
 
 HS_Engine::Context::Context()
 {
-	
+
 }
 
 void HS_Engine::Context::Init()
@@ -83,7 +83,6 @@ void HS_Engine::Context::Init()
 
 	Engine::GetImguiManager().Init();
 
-
 	hr = commandList->Close();
 	ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
 	commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
@@ -138,7 +137,7 @@ void HS_Engine::Context::Render()
 void HS_Engine::Context::UpdatePipeline()
 {
 	HRESULT hr;
-
+	
 	hr = commandAllocator[frameIndex]->Reset();
 	if(FAILED(hr))
 	{
@@ -254,7 +253,6 @@ void HS_Engine::Context::CreateSwapChain()
 	}
 	swapChain = static_cast<IDXGISwapChain3*>(temp_swap_chain);
 	frameIndex = swapChain->GetCurrentBackBufferIndex();
-
 }
 
 void HS_Engine::Context::CreateRenderTargetDescriptorHeap()
@@ -358,6 +356,5 @@ void HS_Engine::Context::CreateFenceAndEvent()
 		MessageBox(NULL, L"Error Create Fence event!",
 			L"Error", MB_OK | MB_ICONERROR);
 	}
-	//WaitForPreviousFrame();
 }
 

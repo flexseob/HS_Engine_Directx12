@@ -6,7 +6,8 @@ using namespace Microsoft::WRL;
 struct Vertex
 {
 	XMFLOAT3 position;
-	XMFLOAT4 color;
+	XMFLOAT4 textureCoord;
+	XMFLOAT3 normal;
 };
 
 

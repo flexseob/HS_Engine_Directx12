@@ -28,7 +28,7 @@ LRESULT HS_Engine::Window::WindowProc(HWND hWnd, UINT message, WPARAM wParam, LP
     case WM_KEYDOWN:
         if (wParam == VK_ESCAPE) {
             if (MessageBox(0, L"Are you sure you want to exit?",
-                L"Really?", MB_YESNO | MB_ICONQUESTION) == IDYES)
+                L"HS_Engine Quit?", MB_YESNO | MB_ICONQUESTION) == IDYES)
                 DestroyWindow(hWnd);
         }
         return 0;
